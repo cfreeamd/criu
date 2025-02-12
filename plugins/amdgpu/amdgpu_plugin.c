@@ -1551,7 +1551,7 @@ exit:
 	return ret;
 }
 
-int amdgpu_plugin_restore_file(int id)
+int amdgpu_plugin_restore_file(int id, bool *retry_needed)
 {
 	int ret = 0, fd;
 	char img_path[PATH_MAX];
@@ -1561,6 +1561,8 @@ int amdgpu_plugin_restore_file(int id)
 	struct kfd_ioctl_criu_args args = { 0 };
 	size_t img_size;
 	FILE *img_fp = NULL;
+
+	*retry_needed = false;
 
 	if (plugin_disabled)
 		return -ENOTSUP;
