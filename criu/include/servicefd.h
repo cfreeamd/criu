@@ -47,5 +47,6 @@ extern int install_service_fd(enum sfd_type type, int fd);
 extern int close_service_fd(enum sfd_type type);
 extern void __close_service_fd(enum sfd_type type);
 extern int clone_service_fd(struct pstree_item *me);
+extern int get_unused_high_fd(void);
 
 #endif /* __CR_SERVICE_FD_H__ */

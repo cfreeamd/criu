@@ -25,6 +25,7 @@ int service_fd_rlim_cur;
 
 /* Base of current process service fds set */
 static int service_fd_base;
+static int next_high_fd;
 
 /* Id of current process in shared fdt */
 static int service_fd_id = 0;
@@ -312,5 +313,15 @@ int clone_service_fd(struct pstree_item *me)
 	service_fd_id = id;
 	ret = 0;
 
+	next_high_fd = service_fd_base + 1024;
+
 	return ret;
+}
+
+int get_unused_high_fd(void)
+{
+	if (next_high_fd > service_fd_rlim_cur)
+		return -1;
+	next_high_fd += 1;
+	return next_high_fd - 1;
 }
