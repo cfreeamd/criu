@@ -836,6 +836,9 @@ struct fdinfo_list_entry *collect_fd_to(int pid, FdinfoEntry *e, struct rst_info
 {
 	struct fdinfo_list_entry *new_le;
 
+	if (fdesc->ops->type == FD_TYPES__EXT)
+		run_plugins(COLLECT_FILE, pid, fdesc->id);
+
 	new_le = alloc_fle(pid, e);
 	if (new_le) {
 		new_le->fake = (!!fake);

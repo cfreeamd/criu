@@ -1651,6 +1651,9 @@ static int __restore_task_with_children(void *_arg)
 	if (open_transport_socket())
 		goto err;
 
+	if (run_plugins(RESUME_DEVICES_EARLY, current->pid->real))
+		goto err;
+
 	timing_start(TIME_FORK);
 
 	if (create_children_and_session())
