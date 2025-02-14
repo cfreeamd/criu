@@ -26,6 +26,8 @@ int amdgpu_plugin_drm_dump_file(int fd, int id, struct stat *drm);
 
 int amdgpu_plugin_drm_restore_file(int fd, CriuRenderNode *rd);
 
+int amdgpu_plugin_drm_unpause_file(int fd);
+
 int get_gem_handle(amdgpu_device_handle h_dev, int dmabuf_fd);
 
 int save_vma_updates(uint64_t offset, uint64_t addr, uint64_t restored_offset, int gpu_id);

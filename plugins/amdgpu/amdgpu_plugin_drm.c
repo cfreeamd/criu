@@ -349,6 +349,22 @@ int amdgpu_plugin_drm_dump_file(int fd, int id, struct stat *drm)
 	return ret;
 }
 
+int amdgpu_plugin_drm_unpause_file(int fd)
+{
+	struct drm_amdgpu_criu_args args = {0};
+	int ret = 0;
+
+	args.op = AMDGPU_CRIU_OP_UNPAUSE;
+	if (drmIoctl(fd, DRM_IOCTL_AMDGPU_CRIU_OP, &args) == -1) {
+		pr_perror("Failed to call unpause ioctl");
+		ret = -1;
+		goto exit;
+	}
+
+	exit:
+	return ret;
+}
+
 int amdgpu_plugin_drm_restore_file(int fd, CriuRenderNode *rd)
 {
 	struct drm_amdgpu_criu_args args = {0};
