@@ -9,6 +9,14 @@
 #include "protobuf.h"
 #include "images/ext-file.pb-c.h"
 
+volatile int dbg_stop = 0;
+int debug_pause(void)
+{
+	while (dbg_stop)
+		sleep(1);
+	return dbg_stop;
+}
+
 static int dump_one_ext_file(int lfd, u32 id, const struct fd_parms *p)
 {
 	int ret;
@@ -46,6 +54,7 @@ static int open_fd(struct file_desc *d, int *new_fd)
 	struct ext_file_info *xfi;
 	int fd;
 	bool retry_needed;
+//debug_pause();
 
 	xfi = container_of(d, struct ext_file_info, d);
 

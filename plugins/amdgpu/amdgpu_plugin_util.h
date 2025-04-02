@@ -53,6 +53,9 @@
 /* Name of file having serialized data of DRM device */
 #define IMG_DRM_FILE			"amdgpu-renderD-%d.img"
 
+/* Name of file having serialized data of dmabuf meta */
+#define IMG_DMABUF_FILE 		"amdgpu-dmabuf_%d.img"
+
 /* Name of file having serialized data of DRM device buffer objects (BOs) */
 #define IMG_DRM_PAGES_FILE		"amdgpu-drm-pages-%d-%d-%04x.img"
 
@@ -84,9 +87,11 @@ struct dumped_fd {
 struct shared_bo {
 	struct list_head l;
 	int handle;
+	int fd;
 	bool has_exporter;
 };
 
+#define DMABUF_LINK "/dmabuf"
 struct shared_dmabuf {
 	struct list_head l;
 	int handle;
@@ -133,7 +138,8 @@ struct list_head *get_dumped_fds();
 void clear_dumped_fds();
 
 bool shared_bo_has_exporter(int handle);
-int record_shared_bo(int handle, bool is_imported);
+int record_shared_bo(int handle, int fd, bool is_imported);
+int handle_for_shared_bo_fd(int dmabuf_fd);
 
 int record_shared_dmabuf_fd(int handle, int dmabuf_fd);
 int dmabuf_fd_for_handle(int handle);

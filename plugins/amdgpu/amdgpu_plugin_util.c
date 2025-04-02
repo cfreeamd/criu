@@ -37,6 +37,7 @@
 #include "amdgpu_drm.h"
 #include "amdgpu_plugin_util.h"
 #include "amdgpu_plugin_topology.h"
+#include "amdgpu_plugin_drm.h"
 
 static LIST_HEAD(dumped_fds);
 static LIST_HEAD(shared_bos);
@@ -86,9 +87,10 @@ bool shared_bo_has_exporter(int handle) {
 	return false;
 }
 
-int record_shared_bo(int handle, bool is_imported) {
+int record_shared_bo(int handle, int fd, bool is_imported) {
 	struct shared_bo *bo;
 
+pr_info("record_shared_bo: handle = %d, is_imported = %d\n", handle, is_imported);
 	if (handle == -1)
 		return 0;
 
@@ -101,10 +103,70 @@ int record_shared_bo(int handle, bool is_imported) {
 	if (!bo)
 		return -1;
 	bo->handle = handle;
+	bo->fd = fd;
 	bo->has_exporter = !is_imported;
 	list_add(&bo->l, &shared_bos);
 
 	return 0;
+}
+
+// int handle_for_shared_bo_fd(int fd) {
+// 	struct shared_bo *bo;
+// 	uint32_t trial_handle;
+// 	amdgpu_device_handle h_dev;
+// 	uint32_t major, minor;
+
+// 	list_for_each_entry(bo, &shared_bos, l) {
+
+// 		/* see if the gem handle for fd using the hdev for bo->fd is the
+// 		   same as bo->handle. */
+// 	   if (amdgpu_device_initialize(bo->fd, &major, &minor, &h_dev)) {
+// 			pr_err("Failed to initialize amdgpu device\n");
+// 			return -1;
+// 		}
+
+// 	   	trial_handle = get_gem_handle(h_dev, fd);
+//  		amdgpu_device_deinitialize(h_dev);
+
+// 		if (bo->handle == trial_handle) {
+// 			return trial_handle;
+// 		}
+// 	}
+
+// 	return -1;
+// }
+int handle_for_shared_bo_fd(int fd) {
+	struct dumped_fd *df;
+	uint32_t trial_handle;
+	uint32_t df_handle;
+	amdgpu_device_handle h_dev;
+	uint32_t major, minor;
+
+	list_for_each_entry(df, &dumped_fds, l) {
+
+		/* see if the gem handle for fd using the hdev for df->fd is the
+		   same as bo->handle. */
+	
+		if (!df->is_drm) {
+			continue;
+		}
+
+		if (amdgpu_device_initialize(df->fd, &major, &minor, &h_dev)) {
+			pr_err("Failed to initialize amdgpu device\n");
+			continue;
+		}
+
+	   	trial_handle = get_gem_handle(h_dev, fd);
+		df_handle = get_gem_handle(h_dev, df->fd);
+
+ 		amdgpu_device_deinitialize(h_dev);
+
+		if (df_handle == trial_handle) {
+			return trial_handle;
+		}
+	}
+
+	return -1;
 }
 
 int record_shared_dmabuf_fd(int handle, int dmabuf_fd) {

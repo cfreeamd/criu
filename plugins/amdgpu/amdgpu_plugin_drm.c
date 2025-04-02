@@ -36,6 +36,7 @@
 
 #include "util.h"
 #include "common/scm.h"
+extern void debug_pause();
 
 int get_gem_handle(amdgpu_device_handle h_dev, int dmabuf_fd)
 {
@@ -302,6 +303,14 @@ int amdgpu_plugin_drm_dump_file(int fd, int id, struct stat *drm)
 
 		if (bo_bucket.dmabuf_fd != KFD_INVALID_FD)
 			close(bo_bucket.dmabuf_fd);
+pr_info("Dump BO: fd = %d id=%d dmabuf_fd=%d boinfo->handle(GEM)=%d size=0x%llx is_import=%d has_exporter=%d\n",
+												fd,
+												id,
+												bo_bucket.dmabuf_fd,
+												boinfo->handle, 
+												bo_bucket.size,
+												bo_bucket.flags & AMDGPU_CRIU_BO_FLAG_IS_IMPORT,
+												shared_bo_has_exporter(boinfo->handle));
 
 		if (bo_contents_fp)
 			fclose(bo_contents_fp);
@@ -311,9 +320,10 @@ int amdgpu_plugin_drm_dump_file(int fd, int id, struct stat *drm)
 			goto exit;
 	}
 	for (int i = 0; i < args.num_bos; i++) {
+		struct drm_amdgpu_criu_bo_bucket *bo_bucket = &((struct drm_amdgpu_criu_bo_bucket *)args.bos)[i];
 		DrmBoEntry *boinfo = rd->bo_entries[i];
 
-		ret = record_shared_bo(boinfo->handle, boinfo->is_import);
+		ret = record_shared_bo(boinfo->handle, bo_bucket->dmabuf_fd, boinfo->is_import);
 		if (ret)
 			goto exit;
 	}
@@ -370,7 +380,13 @@ int amdgpu_plugin_drm_restore_file(int fd, CriuRenderNode *rd)
 	struct drm_amdgpu_criu_args args = {0};
 	int ret = 0;
 	bool retry_needed = false;
-
+debug_pause();
+pr_info("Restore: fd = %d pid=%d drm_render_minor=%d num_of_bos=%ld num_of_objects=%d\n",
+			fd,
+			rd->pid,
+			rd->drm_render_minor,
+			rd->num_of_bos,
+			rd->num_of_objects);
 	args.num_bos = rd->num_of_bos;
 	args.num_objs = rd->num_of_objects;
 	args.priv_data = (uint64_t)rd->priv_data.data;
@@ -383,6 +399,14 @@ int amdgpu_plugin_drm_restore_file(int fd, CriuRenderNode *rd)
 		int dmabuf_fd = -1;
 
 		bo_bucket->addr = boinfo->addr;
+
+pr_info("Restore BO: fd = %d dmabuf_fd=%d boinfo->handle(GEM)=%d size=0x%llx is_import=%d has_exporter=%d\n",
+			fd,
+			bo_bucket->dmabuf_fd,
+			boinfo->handle,
+			bo_bucket->size,
+			bo_bucket->flags & AMDGPU_CRIU_BO_FLAG_IS_IMPORT,
+			shared_bo_has_exporter(boinfo->handle));
 
 		if (work_already_completed(boinfo->handle, rd->drm_render_minor)) {
 			bo_bucket->flags |= AMDGPU_CRIU_BO_FLAG_SKIP;

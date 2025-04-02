@@ -35,6 +35,7 @@
 #include "sockets.h"
 
 #include "common/list.h"
+#include "amdgpu_plugin_dmabuf.h"
 #include "amdgpu_plugin_drm.h"
 #include "amdgpu_plugin_util.h"
 #include "amdgpu_plugin_topology.h"
@@ -42,7 +43,9 @@
 #include "img-streamer.h"
 #include "image.h"
 #include "cr_options.h"
+#include "util.h"
 
+extern void debug_pause();
 struct vma_metadata {
 	struct list_head list;
 	uint64_t old_pgoff;
@@ -1238,9 +1241,10 @@ static int save_bos(int id, int fd, struct kfd_ioctl_criu_args *args, struct kfd
 		amdgpu_device_deinitialize(h_dev);
 	}
 	for (i = 0; i < e->num_of_bos; i++) {
+		struct kfd_criu_bo_bucket *bo_bucket = &bo_buckets[i];
 		KfdBoEntry *boinfo = e->bo_entries[i];
 
-		ret = record_shared_bo(boinfo->handle, false);
+		ret = record_shared_bo(boinfo->handle, bo_bucket->dmabuf_fd, false);
 		if (ret)
 			goto exit;
 	}
@@ -1363,7 +1367,17 @@ int amdgpu_plugin_dump_file(int fd, int id)
 		return -1;
 	}
 
-	/* Check whether this plugin was called for kfd or render nodes */
+	/* Check whether this plugin was called for kfd, dmabuf or render nodes */
+	ret = get_dmabuf_info(fd, &st);
+	if (ret == 0) {
+		pr_info("Dumping dmabuf fd = %d\n", fd);
+		ret = amdgpu_plugin_dmabuf_dump(fd, id, &st);
+
+		if (ret)
+			return ret;
+		return 0;
+	}
+
 	if (major(st.st_rdev) != major(st_kfd.st_rdev) || minor(st.st_rdev) != 0) {
 
 		/* This is RenderD dumper plugin, for now just save renderD
@@ -1726,6 +1740,8 @@ int amdgpu_plugin_restore_file(int id, bool *retry_needed)
 	size_t img_size;
 	FILE *img_fp = NULL;
 
+//debug_pause();
+
 	*retry_needed = false;
 
 	if (plugin_disabled)
@@ -1753,8 +1769,12 @@ int amdgpu_plugin_restore_file(int id, bool *retry_needed)
 		pr_info("Restoring RenderD %s\n", img_path);
 
 		img_fp = open_img_file(img_path, false, &img_size);
-		if (!img_fp)
-			return -EINVAL;
+		if (!img_fp) {
+			ret = amdgpu_plugin_dmabuf_restore(id);
+			if (ret == 1)
+				*retry_needed = true;
+			return ret;
+		}
 
 		pr_debug("RenderD Image file size:%ld\n", img_size);
 		buf = xmalloc(img_size);
@@ -2034,6 +2054,7 @@ int amdgpu_plugin_resume_devices_late(int target_pid)
 {
 	struct kfd_ioctl_criu_args args = { 0 };
 	int fd, exit_code = 0;
+debug_pause();
 
 	if (plugin_disabled)
 		return -ENOTSUP;
