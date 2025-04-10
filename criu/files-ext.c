@@ -87,14 +87,14 @@ struct collect_image_info ext_file_cinfo = {
 	.collect = collect_one_ext,
 };
 
-int dump_unsupp_fd(struct fd_parms *p, int lfd, char *more, char *info, FdinfoEntry *e)
+int dump_unsupp_fd(struct fd_parms *p, int lfd, char *more, char *info, FdinfoEntry *e, bool force)
 {
 	int ret;
 
-	ret = do_dump_gen_file(p, lfd, &ext_dump_ops, e);
+	ret = do_dump_gen_file(p, lfd, &ext_dump_ops, e, force);
 	if (ret == 0)
 		return 0;
 	if (ret == -ENOTSUP)
 		pr_err("Can't dump file %d of that type [%o] (%s %s)\n", p->fd, p->stat.st_mode, more, info);
-	return -1;
+	return ret;
 }

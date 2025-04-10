@@ -754,7 +754,7 @@ int dump_socket(struct fd_parms *p, int lfd, FdinfoEntry *e)
 		return -1;
 	}
 
-	return do_dump_gen_file(p, lfd, ops, e);
+	return do_dump_gen_file(p, lfd, ops, e, false);
 }
 
 static int inet_receive_one(struct nlmsghdr *h, struct ns_id *ns, void *arg)

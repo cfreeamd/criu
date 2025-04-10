@@ -37,6 +37,7 @@
 #include "amdgpu_drm.h"
 #include "amdgpu_plugin_util.h"
 #include "amdgpu_plugin_topology.h"
+#include "amdgpu_plugin_drm.h"
 
 static LIST_HEAD(dumped_fds);
 static LIST_HEAD(shared_bos);
@@ -105,6 +106,40 @@ int record_shared_bo(int handle, bool is_imported) {
 	list_add(&bo->l, &shared_bos);
 
 	return 0;
+}
+
+int handle_for_shared_bo_fd(int fd) {
+	struct dumped_fd *df;
+	uint32_t trial_handle;
+	uint32_t df_handle;
+	amdgpu_device_handle h_dev;
+	uint32_t major, minor;
+
+	list_for_each_entry(df, &dumped_fds, l) {
+
+		/* see if the gem handle for fd using the hdev for df->fd is the
+		   same as bo->handle. */
+
+		if (!df->is_drm) {
+			continue;
+		}
+
+		if (amdgpu_device_initialize(df->fd, &major, &minor, &h_dev)) {
+			pr_err("Failed to initialize amdgpu device\n");
+			continue;
+		}
+
+		trial_handle = get_gem_handle(h_dev, fd);
+		df_handle = get_gem_handle(h_dev, df->fd);
+
+		amdgpu_device_deinitialize(h_dev);
+
+		if (df_handle == trial_handle) {
+			return trial_handle;
+		}
+	}
+
+	return -1;
 }
 
 int record_shared_dmabuf_fd(int handle, int dmabuf_fd) {
